@@ -5,14 +5,14 @@
 #mydf should have columns: sdorm, pdorm, Latitude
 
 #####CREATING SLIDING WINDOW IN R#######
-#here only applied for the step = 1
+
 
 mylist = list()
 
 n=295 #total sample size
 k=40 #window size
 
-
+#here only applied for the step = 1
 for (i in 1:(n-k)) {
   w = mydf[i:(i+k),]
   r = cor.test(w$sdorm, w$pdorm, method = "kendall")
@@ -27,6 +27,7 @@ mylist
 mydf_slide = data.frame(matrix(unlist(mylist), nrow=length(mylist), byrow=TRUE))
 head(mydf_slide)
 write.csv(mydf_slide, 'cor_slide_final.csv', row.names=F)
+
 
 #####PLOTTING SLIDING WINDOW IN PYTHON USING PLOTLY#######
 
