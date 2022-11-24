@@ -1,0 +1,68 @@
+#Here I have a dataframe (named "mydf")
+#I want to calculate the correlation of two variables called "sdorm" and "pdorm". 
+#overall the correlation is weak, but I want to use the sliding window to see if the correlation increase along some condition
+#my condition here is the Latitude. I expect that I have strong correlation as the latitude goes higher. 
+#mydf should have columns: sdorm, pdorm, Latitude
+
+#####CREATING SLIDING WINDOW IN R#######
+#here only applied for the step = 1
+
+mylist = list()
+
+n=295 #total sample size
+k=40 #window size
+
+
+for (i in 1:(n-k)) {
+  w = mydf[i:(i+k),]
+  r = cor.test(w$sdorm, w$pdorm, method = "kendall")
+  d = as.data.frame(cbind(mean(w$Latitude),r$estimate,r$p.value))
+  colnames(d) = c("lat","r","p")
+  rownames(d) = NULL
+  mylist[[i]] = d
+}
+
+mylist
+
+mydf_slide = data.frame(matrix(unlist(mylist), nrow=length(mylist), byrow=TRUE))
+head(mydf_slide)
+write.csv(mydf_slide, 'cor_slide_final.csv', row.names=F)
+
+#####PLOTTING SLIDING WINDOW IN PYTHON USING PLOTLY#######
+
+import plotly
+import plotly.express as px
+import os
+import pandas as pd
+
+
+df = pd.read_csv('cor_slide_final.csv') #this is my dataframe
+
+#assign group based on pvalue
+df.loc[df['p'] <= 0.05, ['group']] = '<0.05|=0.05'
+df.loc[df['p'] > 0.05, ['group']] = '>0.05'
+
+df['group'] = df['group'].astype(str) #if needed, convert to string
+
+#overall plot
+fig1 = px.scatter(df, x='lat',y='r',color = 'group',symbol = 'group',
+                 trendline = 'ols', trendline_scope = 'overall',
+                  template = "simple_white",
+                color_discrete_sequence= ['rgb(93, 105, 177)','rgb(229, 134, 6)'],
+                labels={"lat": "Mean latitude per window",
+                        "r": "Correlation coefficient",
+                       "group":"p-value"}
+                 )
+
+fig1.show()
+
+#only plot the correlations with significant p value
+
+df05 = df[df['p']<=0.05]
+
+fig2 = px.scatter(df05, x='lat',y='r',color = 'r',
+                 trendline = 'ols', template = "simple_white",
+                color_continuous_scale = 'Brwnyl',
+                labels={"lat": "Mean latitude per window",
+                        "r": "Correlation coefficient"})
+
