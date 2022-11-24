@@ -29,6 +29,19 @@ head(mydf_slide)
 write.csv(mydf_slide, 'cor_slide_final.csv', row.names=F)
 
 
+#for different steps, f.e. 5 
+s=5
+i=1
+while (i <= 1:(n-k)) {
+  w = mydf[i:(i+k),]
+  r = cor.test(w$sdorm, w$pdorm, method = "kendall")
+  d = as.data.frame(cbind(mean(w$Latitude),r$estimate,r$p.value))
+  colnames(d) = c("lat","r","p")
+  rownames(d) = NULL
+  mylist[[i]] = d
+  i= i + s
+}
+
 #####PLOTTING SLIDING WINDOW IN PYTHON USING PLOTLY#######
 
 import plotly
