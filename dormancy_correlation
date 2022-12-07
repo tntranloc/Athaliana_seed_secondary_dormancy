@@ -1,0 +1,95 @@
+#dataframe for pdorm, sdorm, and control
+#germinated, non germinated, germination rate, together with: Latitude, Longitude, Admixture, Iso alpha, Genotype, AccessionID
+
+#in control, subset those with germination rate equal or greater than 0.7 
+good = control[control['germination rate'] >= 0.7]
+include_id = list(good['ID'])
+
+#include only those in pdorm, sdorm
+pdorm_good = pdorm[pdorm['ID'].isin(include_id)]
+sdorm_good = sdorm[sdorm['ID'].isin(include_id)]
+
+
+#############################OR do this in R#########################
+
+#in control, subset those with germination rate equal or greater than 0.7 
+good = subset(control, germination_rate <= 0.7)
+include_id = good$ID
+
+#include only those in pdorm, sdorm
+pdorm_good = subset(pdorm, ID %in% include_id)
+sdorm_good = subset(sdorm, ID %in% include_id)
+
+##########################GET CLIMATIC DATA IN R##########################
+
+library(sp)
+
+install.packages('terra', repos='https://rspatial.r-universe.dev') #need to tell R not to compile terra
+#without this, error may happen when loading raster package
+
+library(raster) #to have getData function
+
+biocur = getData("worldclim",var="bio",res=10) #to get data from WorldClim #resolution 10km
+summary(biocur)
+gain(biocur) #check the gain, f.e. temperature gain = 0.1 means meaning that it must be multipled by 0.1 to convert back to degrees Celsius.
+
+#here are four representative concentration pathways (RCPs) 
+#describing different climate futures depending on the emitted volumes of greenhouse gases.
+#using RCP 4.5 here, which assumes a peak decline in green house gases around 2040, 
+#followed by decreasing emission. This is a rather optimistic scenario.
+
+biofut = getData('CMIP5', var='bio', res=10, rcp=45, model='NO', year=50, download=T)
+summary(biofut)
+
+#define your extent #lon, lat
+e = extent(..,..,..,..)
+biocur_df = raster::extract(biocur[[1:19]],e, df=T)
+
+#or only extract those in your dataframe
+xy = good[,c(lon,lat)] #define your xy coordinates, NOTE THAT!! longitude =x and latitude =y
+spdf = SpatialPointsDataFrame(coords = xy, data = df,
+                               proj4string = CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
+
+#Extract data from biocur using a SpatialPoints object 
+#here took all 19 climatic variables
+biocur_df = raster::extract(biocur[[1:19]],spdf,df=T) 
+divide bio1 to bio11 by 10!!
+
+write.csv(biocur_df, 'biocur.csv')
+
+
+##############Combine data##############
+#combine dataframes, I will neeed 2 kinds of formats
+#one has columns treatment, germ, non germ, germ rate, lon, lat, bio...
+#the other has columns control, pdorm, sdorm (values are germ rate), lon, lat, bio9
+
+#type 1
+good_biocur = cbind(good, biocur)
+pdorm_biocur = cbind(pdorm_good, biocur)
+sdorm_biocur = cbind(sdorm_good, biocur)
+all_good_1_biocur = rbind(good_biocur, pdorm_biocur, sdorm_biocur)
+
+t1 = data.frame(pdorm_good$germrate,sdorm_good$germrate,good$germrate, good$lon, good$lat, good$iso_alpha)
+all_good_2_biocur = cbind(t1, biocur)
+
+
+
+##############OR I would go to python, for example: ##############
+good_biocur = pd.concat([good, biocur], axis = 1)
+pdorm_biocur = pd.concat([pdorm, biocur], axis = 1)
+sdorm_biocur = pd.concat([sdorm, biocur], axis = 1)
+
+
+all_good_1_biocur = pd.concat([good_biocur, pdorm_biocur, sdorm_biocur]).reset_index(drop=True)
+
+
+
+#################################################################PLOT FIRST, I use Plotly Python#######################################
+
+#use all_good_2_biocur
+
+
+
+
+
+
