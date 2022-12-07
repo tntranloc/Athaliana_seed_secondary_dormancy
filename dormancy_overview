@@ -170,6 +170,68 @@ fig.write_html("myplot.html")
 ###########Sliding window##############
 see sliding_window script
 
+#############################################GENERALISED LINEAR MODEL (in R)#####################################
+##We want to know which ecological variables influence the dormancy, 
+#binomial model should fit our purpose
+
+#use all_good_1_biocur
+
+summary(all_good_1_biocur)    #check if treatments (and Origin) is as factor
+#convert temperature unit to celsius, worldclim has multiple everything by 10#check the distribution of the data
+plot(density(all_good_1_biocur$Germination_rate))   
+#create matrix of germinated vs non germinated value
+all_good_1_biocur$Group <- factor(all_good_1_biocur$Group, levels=c("primary_dormancy","Secondary_dormancy","4degree"))
+all_good_1_biocur$Origin <- factor(all_good_1_biocur$Origin)
+mat<-cbind(all_good_1_biocur$Germinated,all_good_1_biocur$Non_germinated)
+head(mat)
+summary(mat)
+mat<-as.matrix(mat)
+colnames(mat)<-c("germ","ngerm")
+
+#run glm model for each factor 
+mod1 = glm(mat ~ bio1*Group,
+            family = "quasibinomial", data = dorm)  #same if you use the matrix
+summary(mod1)
+
+library(jtools) #for summ()
+summ(mod1, confint = TRUE, exp = T, digits = 4)
+anova(mod1, test = "F")
+
+#write a loop to check all BIO factors
+i=9
+for (i in 9:27) {
+  print(colnames(dorm)[i])
+  mymod=glm(mat~dorm[,i]*dorm$Group, family="quasibinomial")
+  print(summary(mymod))
+  
+}
+
+
+
+####Plot it out
+library(ggpmisc)
+#plot including 3 treatments, ecological variable against dormancy probability
+myplot = ggplot(dorm, aes(x = (bio9/10), y = Germination_rate, color = Group)) + geom_point() +
+  stat_smooth(method = "glm", method.args = list(family=quasibinomial), se = TRUE) +
+  scale_fill_manual('',values=c("#999999", "#E69F00", "#56B4E9")) + 
+  scale_color_manual('',values=c("#999999", "#E69F00", "#56B4E9"), 
+                     name="Group",
+                     labels=c("Primary dormancy", "Secondary dormancy", "Control")) + 
+  ggtitle("Germination and temperature of driest quarter")+
+  xlab("Mean temperature of driest quarter") +
+  ylab("Probability of germination") +
+  theme_classic() +
+  theme(plot.title=element_text(family = "Optima", face = "bold", size=13,hjust=0.5,vjust=1), 
+        legend.position = "bottom", 
+        legend.title = element_text(colour = "black", size = 11, family = "Optima"),
+        legend.text = element_text(colour = "black", size = 11, family = "Optima"),
+        axis.title.y = element_text(colour = 'black',  size = 11, family = "Optima", face= "bold", angle=90), 
+        axis.title.x = element_text(colour = "black", size = 11, family = "Optima", face = "bold"),
+        axis.text.x = element_text(colour = "black", size = 9, family = "Optima"),
+        axis.text.y = element_text(colour = "black", size = 9, family = "Optima"))
+
+
+
 
 
 
