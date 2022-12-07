@@ -63,12 +63,14 @@ write.csv(biocur_df, 'biocur.csv')
 #one has columns treatment, germ, non germ, germ rate, lon, lat, bio...
 #the other has columns control, pdorm, sdorm (values are germ rate), lon, lat, bio9
 
-#type 1
+###Type 1
 good_biocur = cbind(good, biocur)
 pdorm_biocur = cbind(pdorm_good, biocur)
 sdorm_biocur = cbind(sdorm_good, biocur)
 all_good_1_biocur = rbind(good_biocur, pdorm_biocur, sdorm_biocur)
 
+
+###Type 2
 t1 = data.frame(pdorm_good$germrate,sdorm_good$germrate,good$germrate, good$lon, good$lat, good$iso_alpha)
 all_good_2_biocur = cbind(t1, biocur)
 
@@ -88,7 +90,85 @@ all_good_1_biocur = pd.concat([good_biocur, pdorm_biocur, sdorm_biocur]).reset_i
 
 #use all_good_2_biocur
 
+import plotly
+import plotly.express as px
+import os
+import pandas as pd
 
+import statsmodels as statmod
+import numpy as np
+import scipy as sp
+import patsy 
+
+#visualise the samples on geographical maps
+
+fig8 = px.scatter_mapbox(df1, lat="Latitude", lon="Longitude", color = "Origin",
+                  color_discrete_sequence = px.colors.qualitative.Safe, zoom=3,
+                         hover_name = "Genotype", 
+                         hover_data = ["Latitude","Longitude","bio9","bio10","bio18","sdorm","pdorm"],
+                        center={"lat": 54.5, "lon": 15.2},
+                  mapbox_style="carto-positron") #can choose something else, check plotly
+
+
+#pdorm and sdorm against latitude
+
+fig_plat = px.scatter(df1, x='Latitude',y='pdorm',symbol = 'Origin',color = 'Origin', #symbol and colour by countries
+                 trendline = 'ols', trendline_scope = 'overall',
+                  template = "simple_white",
+                color_discrete_sequence = px.colors.qualitative.Safe,
+                labels={"pdorm": "Primary dormancy (germination rate)"}
+                        )
+
+fig_slat = px.scatter(df1, x='Latitude',y='sdorm',symbol = 'Origin',color = 'Origin',
+                 trendline = 'ols', trendline_scope = 'overall',
+                  template = "simple_white",
+                color_discrete_sequence = px.colors.qualitative.Safe,
+                labels={"sdorm": "Secondary dormancy (germination rate)"}
+                )
+                
+                
+#pdorm and sdorm correlation
+
+fig_ps_origin = px.scatter(df1, x='pdorm',y='sdorm',color = 'Origin', symbol = 'Origin', #colour by countries
+                  hover_name = "Origin", hover_data = ["bio9","Latitude"],
+                 trendline = 'ols', trendline_scope = 'overall',template = "simple_white",
+                color_discrete_sequence = px.colors.qualitative.Safe,
+                labels={"pdorm": "Primary dormancy (germination rate)",
+                        "sdorm": "Secondary dormancy (germination rate)",
+                       "bio9":"BIO9"}
+                        )
+                        
+fig_ps_bio9 = px.scatter(df1, x='pdorm',y='sdorm',color = 'bio9', hover_name = "Origin", 
+                  hover_data = ["bio9","Latitude","Longitude"],
+                 trendline = 'ols', template = "simple_white",
+                color_continuous_scale = 'amp',
+                labels={"pdorm": "Primary dormancy (germination rate)",
+                        "sdorm": "Secondary dormancy (germination rate)",
+                       "bio9":"BIO9"}
+                        )                        
+ fig_ps_lat = px.scatter(df1, x='pdorm',y='sdorm',color = 'Latitude', hover_name = "Origin", hover_data = ["bio9","Latitude"], #colour by latitude
+                 trendline = 'ols', template = "simple_white",
+                color_continuous_scale = 'deep',
+                labels={"pdorm": "Primary dormancy (germination rate)",
+                        "sdorm": "Secondary dormancy (germination rate)",
+                       "bio9":"BIO9"}
+                 )                       
+
+
+#customise your plot
+fig.update_layout(
+    font=dict(
+        family="Times New Roman",
+        size=16
+    )
+)
+
+#save your plot 
+fig.write_html("myplot.html")
+
+
+###########Sliding window##############
+see sliding_window script
 
 
 
