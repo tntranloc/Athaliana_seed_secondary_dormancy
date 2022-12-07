@@ -234,4 +234,31 @@ myplot = ggplot(dorm, aes(x = (bio9/10), y = Germination_rate, color = Group)) +
 
 
 
+#PCA for population structure examination
+head(sdorm)
+rownames(sdorm) <- NULL
+par(mar=c(4,4,2,0.5))
+pcaS <- prcomp(sdorm[,c(7:28)],center=T) #all bio factors
+summary(pcaS)
+
+biplot(pcaS) #biplot
+
+plot(pcaS$sdev^2 / sum(pcaS$sdev^2), xlab="PC",
+     ylab="Fraction Variation Explained", main="Scree plot") #scree plot
+     
+#pca plot with colours by countries
+
+perc <- round(100*(pcaS$sdev^2 / sum(pcaS$sdev^2))[1:10],2)
+names(perc) <- apply(array(seq(1,10,1)), 1, function(x){paste0("PC", x)})
+perc
+colors <- RColorBrewer::brewer.pal(9, "Paired")
+par(mfrow=c(2,2), mar=c(4,4,0.5,0.5))
+plot(pcaS$x[,1:2], col=colors[factor(unique(sdorm$Admixture))], pch=16,cex=1.2)
+legend("bottomleft", legend=levels(factor(unique(sdorm$Admixture))), 
+       col=colors, pch=16, ncol=3, cex=0.8)
+plot(pcaS$x[,2:3], col=colors[factor(unique(sdorm$Admixture))], pch=16, cex=1.2)
+plot(pcaS$x[,3:4], col=colors[factor(unique(sdorm$Admixture))], pch=16, cex=1.2)
+
+#see more for biplot at https://www.benjaminbell.co.uk/2018/02/principal-components-analysis-pca-in-r.html
+
 
