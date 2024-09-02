@@ -1,4 +1,5 @@
-#statgenGWAS allows adding one more covariate beside kinship (emma libraries only allow adding kinship as covariate)
+####If preferred running gwas in R ####
+### statgenGWAS allows adding one more covariate beside kinship (emma libraries only allow adding kinship as covariate)
 
 
 ###PHENOTYPE data
@@ -85,6 +86,6 @@ plot(mygwas,
      col = c("#88CCEE", "#44AA99", "#117733", "#999933","#DDCC77")) # here I have only 5 chromosomes to colour
 
 
-##we should run with emma also to see if with and without covariate changes anything
+################################### DONE ###################################
 
 
