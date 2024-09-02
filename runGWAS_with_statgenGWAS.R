@@ -1,5 +1,8 @@
 ####If preferred running gwas in R ####
 ### statgenGWAS allows adding one more covariate beside kinship (emma libraries only allow adding kinship as covariate)
+### see complete_mapping_from_fastq_to_vcf_workflow.sh script 
+  ### for running GWAS in Bash using Gemma -- high recommended for efficiency #####
+
 
 
 ###PHENOTYPE data
