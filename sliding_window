@@ -1,8 +1,8 @@
-#Here I have a dataframe (named "mydf")
-#I want to calculate the correlation of two variables called "sdorm" and "pdorm". 
-#overall the correlation is weak, but I want to use the sliding window to see if the correlation increase along some condition
-#my condition here is the Latitude. I expect that I have strong correlation as the latitude goes higher. 
-#mydf should have columns: sdorm, pdorm, Latitude
+#### Here I have a dataframe (named "mydf")
+## I want to calculate the correlation of two variables called "sdorm" and "pdorm". 
+## overall the correlation is weak, but I want to use the sliding window to see if the correlation increase along some condition
+## my condition here is the Latitude. I expect that I have strong correlation as the latitude goes higher. 
+## mydf should have columns: sdorm, pdorm, Latitude
 
 #####CREATING SLIDING WINDOW IN R#######
 
@@ -50,7 +50,7 @@ import os
 import pandas as pd
 
 
-df = pd.read_csv('cor_slide_final.csv') #this is my dataframe
+df = pd.read_csv('yourinput.csv') #this is my dataframe
 
 #assign group based on pvalue
 df.loc[df['p'] <= 0.05, ['group']] = '<0.05|=0.05'
