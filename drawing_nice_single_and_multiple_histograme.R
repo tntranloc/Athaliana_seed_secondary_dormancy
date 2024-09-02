@@ -1,4 +1,4 @@
-
+## Functions to draw multiple or single histogram
 # single histogram
 plot_histogram = function(df, feature) {
   plt = ggplot(df, aes(x=eval(parse(text=feature)))) +
