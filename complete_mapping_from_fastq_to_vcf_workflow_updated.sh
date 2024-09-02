@@ -1,4 +1,4 @@
-#####################################FROM FASTQ to VCF WORKFLOW##########################################################################
+##################################### MAPPING FROM FASTQ to VCF WORKFLOW ##########################################################################
 ##########################################################################################################################################
 
 
@@ -65,15 +65,6 @@ REF=/path/to/your/directory/TAIR10.fasta
 TRIM_DIR=/path/to/your/directory/filteredReads
 OUT_DIR=/path/to/your/directory/mapppedReads
 
-# Loop through all the paired-end fastq files. 
-
-for R1 in ${TRIM_DIR}/*.trimmed.R1.fastq.gz; do
-    R2=${R1%.trimmed.R1.fastq.gz}.trimmed.R2.fastq.gz
-    SAMPLE=$(basename ${R1%.trimmed.R1.fastq.gz})
-    bwa mem -M -t 16 ${REF} ${R1} ${R2} > ${OUT_DIR}/${SAMPLE}.sam
-done
-
-#using while loop, three times faster than for loop...
 
 find "${TRIM_DIR}" -name "*.trimmed.R1.fastq.gz" | while read -r R1; do
     R2="${R1%.trimmed.R1.fastq.gz}.trimmed.R2.fastq.gz"
@@ -81,7 +72,7 @@ find "${TRIM_DIR}" -name "*.trimmed.R1.fastq.gz" | while read -r R1; do
     bwa mem -M -t 16 "${REF}" "${R1}" "${R2}" > "${OUT_DIR}/${SAMPLE}.sam"
 done
 
-#looking for multiple patterns with -o flag (-o stands for "or")
+## if needed: looking for multiple patterns with -o flag (-o stands for "or")
 find "${TRIM_DIR}" \( -name "SRR19458*.trimmed.R1.fastq.gz" -o -name "SRR1946*.trimmed.R1.fastq.gz" \) | while read -r R1; do
     R2="${R1%.trimmed.R1.fastq.gz}.trimmed.R2.fastq.gz"
     SAMPLE=$(basename "${R1%.trimmed.R1.fastq.gz}")
@@ -108,11 +99,12 @@ for file in *_1.trimmed.fastq.gz; do
 done
 
 
-#Also, before you proceed, you must SORT THE BAM FILE
-#Most downstream analyses require this in order to function properly
+## IMPORTANT: before you proceed, you must SORT THE BAM FILE
+## Most downstream analyses require this in order to function properly
 
-#do it in two steps
-# Loop through each .sam file to convert it to bam and sort it
+### Sorting is done in two steps
+## Loop through each .sam file to convert it to bam and sort it
+
 cd mappedReads
 for file in *.sam; do
     base=$(basename ${file%.sam})
@@ -131,50 +123,8 @@ done
 #Finally, we use samtools sort to sort the input SAM file and save the output as the sorted BAM file with the generated filename.
 
 ##########################################################################################################################################
-#STEP 3.5: remove duplicates if needed
-#we need to remove duplicate reads from the dataset to avoid PCR duplicates and technical duplicates 
-    #these inflate the sequencing depth and give false quality score in the genotype calls later. 
-    #here we use Picard Tools, other tools are available but picard seems to be the most recommended and up to date
-
-    #note that running this on cluster might result to some error because whatever server is not connected, so I just used samtools for simplicity sake
-
-for file in *_sort.bam; do
-    sample_name=$(basename "$file" _sort.bam) 
-    java -Xmx1g -jar /scratch/ltntran/230511_remap_1001_FrCol/mytools/picard.jar \
-        MarkDuplicates REMOVE_DUPLICATES=true \
-        ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT \
-        MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=1000 \
-        INPUT="$file" \
-        OUTPUT="${sample_name}.rmd.bam" \
-        METRICS_FILE="${sample_name}.rmd.bam.metrics"
-done
-
-#index the bam file again 
-samtools index -@ 12 *.rmd.bam
-
-#java -Xmx1g executes the Java program picard.jar using the java command. 
-    #The -Xmx1g flag sets the maximum memory allocation for the Java process to 1GB.
-#MarkDuplicates REMOVE_DUPLICATES=true specifies that duplicate reads should be removed, 
-    #otherwise, it will only mark duplicates, not remove anything
-#ASSUME_SORTED=true VALIDATION_STRINGENCY=SILENT indicate that the input BAM files are sorted and that the validation stringency should be set to silent (less strict validation).
-#MAX_FILE_HANDLES_FOR_READ_ENDS_MAP=1000  sets the maximum number of file handles for read ends map to 1000. 
-    #It helps in managing the memory usage during the duplicate marking process.
-#METRICS_FILE: statistics and metrics related to duplicate marking will be saved
-
-
-##using samtools, MUST follow this order of operations to make it work
-#You have to name-sort for samtools fixmate, and coordinate-sort for samtools markdup. 
-
-# The first sort can be omitted if the file is already name ordered
-samtools sort -n -o namesort.bam example.bam
-# Add ms and MC tags for markdup to use later
-samtools fixmate -m namesort.bam fixmate.bam
-# Markdup needs position order
-samtools sort -o positionsort.bam fixmate.bam
-# Finally mark duplicates
-samtools markdup -r positionsort.bam markdup.bam
-
-#loop them together 
+#STEP 3.5: Optional depending on the data - Mark duplicates
+## DO keep the order of the four samtools steps 
 for file in *_sort.bam; do
     bamquery_sort=$(basename "$file" _sort.bam)_querysort.bam
     fixmate_output=$(basename "$file" _sort.bam)_fixmate.bam
@@ -188,7 +138,7 @@ for file in *_sort.bam; do
 done
 
 ##########################################################################################################################################
-#STEP 3.5: more importantly, check quality of the mapping
+#STEP 3.5: IMPORTANT - check quality of the mapping
 for file in *_sort.bam; do
     sample_name=$(basename "$file" _sort.bam)
     output="${sample_name}.stats"
@@ -197,8 +147,8 @@ done
     #this will create .stats file, which can be visualised by multiQC as demonstrated below
     #you should give the output .stats extension, otherwise, it will only generate some .out files 
 
-#visualise with multiQC
-#remember to export the PATH to anaconda (for me I installed it by conda install multiqc)
+### easily visualise with multiQC
+### remember to export the PATH to anaconda (for me I installed it by conda install multiqc)
 multiqc /path/to/directory/where_the_stats_files_are/ /also/path/to/directory/where_the_fastq_log_files_are/
     #multiqc will search for all stats and log files in the given directories to generate a report for all samples
     #you can give as many directories as you like
@@ -269,109 +219,7 @@ bcftools reheader --samples samplenames.txt ./outputname.vcf.gz -o ./outputname_
 #-O- specify the output type, here it is z - i.e. gzipped (compressed) vcf
 #-o output path
 
-
-###Try with freebayes?
-#dependency: vcflib
-freebayes -f reference.fasta --min-mapping-quality 20 --min-base-quality 30 --min-alternate-fraction 0.1 \
---genotype-qualities --use-best-n-alleles 6 --report-monomorphic --allele-balance-priors-off \
---allele-balance-priors-strict-require-AF -F 0.05 -C 1 --pooled-continuous --skip-coverage 10000 
-\--skip-read-groups --vcf output.vcf input.bam
-
-
-#the bai index file (samtools index -M) must be in the same folder
-freebayes -f reference.fasta --min-mapping-quality 20 --min-base-quality 30 --min-alternate-fraction 0.1 \
---genotype-qualities --use-best-n-alleles 6 --report-monomorphic --allele-balance-priors-off \
---allele-balance-priors-strict-require-AF -F 0.05 -C 1 --pooled-continuous --skip-coverage 10000 
-\--skip-read-groups --bam-list bams.list > output.vcf
-
-
-gatk HaplotypeCaller -R reference.fasta -I input.bam -O output.vcf.gz \
---base-quality-score-threshold 18 --min-base-quality-score 30 --phred-scaled-global-read-mismapping-rate 45
-
-cd /scratch/ltntran/230511_remap_1001_FrCol/bamfiles_for_snp_call_copy/singleVCF_gatk
-
-find /scratch/ltntran/230511_remap_1001_FrCol/bam_files_for_SNPcall/testfiles -name "*_sort.bam" | while read -r bam_file; do
-  output_gvcf="${bam_file%.*}.g.vcf"
-  gatk AddOrReplaceReadGroups -I "$bam_file" -O temp.bam --SORT_ORDER coordinate --RGID foo --RGLB bar --RGPL illumina --RGSM Test --RGPU Barcode
-  gatk HaplotypeCaller \
-    -R /scratch/ltntran/230511_remap_1001_FrCol/Ath_ref/TAIR10_chr_all.fas \
-    -I temp.bam \
-    -O "$output_gvcf" \
-    -sample-name "${bam_file%_*}" \
-    --base-quality-score-threshold 18 --min-base-quality-score 30 --phred-scaled-global-read-mismapping-rate 45 -ERC GVCF 
-done
-
-for bam_file in *_sort.bam; do
-gatk AddOrReplaceReadGroups -I "$bam_file" -O temp.bam --SORT_ORDER coordinate --RGID foo --RGLB bar --RGPL illumina --RGSM Test --RGPU Barcode
-samtools index temp.bam
-output_gvcf="${bam_file%.*}.g.vcf"
-gatk HaplotypeCaller \
--R /scratch/ltntran/230511_remap_1001_FrCol/Ath_ref/TAIR10_chr_all.fas \
--I temp.bam \
--O "$output_gvcf" \
---base-quality-score-threshold 18 --min-base-quality-score 30 --phred-scaled-global-read-mismapping-rate 45 -ERC GVCF 
-done
-
-
-#GNU parallel
-
-REF=path/to/reference.fasta
-export REF # This is critical!
-function parallel_call {
-    bcftools mpileup \
-        --fasta-ref ${REF} \
-        --regions $2 \
-        --output-type u \
-        $1 | \
-    bcftools call --multiallelic-caller \
-                  --variants-only \
-                  --output-type u - > ${1/.bam/}.$2.bcf
-}
-export -f parallel_call
-chrom_set=`samtools idxstats SRR1946493_sort.bam | cut -f 1 | grep -v '*'`
-parallel --verbose -j 4 parallel_call input.bam ::: ${chrom_set}
-
-find “${TRIM_DIR}” -name "*_sort.bam" | while read -r bamfile; do
-    parallel --verbose -j 4 parallel_call $bam_file ::: ${chrom_set}
-done
-
-# Generate an array of the resulting files
-# to be concatenated.
-sample_name="sample_A"
-set -- `echo $chrom_set | tr "\n" " "`
-set -- "${@/#/${sample_name}.}" && set -- "${@/%/.bcf}"
-# This will generate a list of the output files:
-# sample_A.I.bcf sample_B.II.bcf etc.
-
-set -- "${@/#/test.}" && set -- "${@/%/.bcf}"
-
-# Output compressed result
-bcftools concat $@ --output-type b > $sample_name.bcf
-
-# Remove intermediate files
-rm $@
-
-# List all the sample names
-samples="sample1 sample2 sample3 ..."
-
-# Loop over each sample
-
-for sample in $samples; do
-    # Create an empty array to store the VCF files for each sample
-    vcf_files=()
-
-    # Loop over each chromosome
-    for chr in chr1 chr2 chr3 ...; do
-        # Append the VCF file path for the current sample and chromosome to the array
-        vcf_files+=("${sample}.${chr}.vcf.gz")
-    done
-
-    # Merge the VCF files for the current sample
-    bcftools merge "${vcf_files[@]}" -Oz -o "${sample}.combined.vcf.gz"
-done
-
-
-
+### Further options
 
 #--min-mapping-quality: Specifies the minimum mapping quality threshold for reads to be considered for variant calling.
 #--min-base-quality: Specifies the minimum base quality threshold for bases to be considered for variant calling.
@@ -433,7 +281,8 @@ vcftools --gzvcf $SUBSET_VCF --site-quality --out $OUT
 vcftools --gzvcf $SUBSET_VCF --missing-indv --out $OUT
 vcftools --gzvcf $SUBSET_VCF --missing-site --out $OUT
 
-#Now brining it to R
+######################
+### Now bring them to R
 library(tidyverse)
     #first, variant quality
 var_qual = read_delim("./outputname_rename_subset.lqual", delim = "\t", col_names = c("chr", "pos", "qual"), skip = 1)
@@ -485,6 +334,8 @@ f = ggplot(ind_depth, aes(depth)) + geom_histogram(fill = "dodgerblue1", colour 
 ind_miss  = read_delim("./outputname_rename_subset.imiss", delim = "\t", col_names = c("ind", "ndata", "nfiltered", "nmiss", "fmiss"), skip = 1)
 g = ggplot(ind_miss, aes(fmiss)) + geom_histogram(fill = "dodgerblue1", colour = "black", alpha = 0.3) + theme_light()
 
+
+##############################################
 ##OKAY now we know what threhold to choose
 VCF_IN=~/vcf/outputname_rename.vcf.gz
 VCF_OUT=~/vcf/outputname_rename_filtered.vcf.gz
@@ -496,7 +347,7 @@ QUAL=30
 MIN_DEPTH=10
 MAX_DEPTH=50
 
-# perform the filtering with vcftools
+#### perform the filtering with vcftools
 vcftools --gzvcf $VCF_IN \
 --remove-indels --maf $MAF --max-missing $MISS --minQ $QUAL \
 --min-meanDP $MIN_DEPTH --max-meanDP $MAX_DEPTH \
@@ -505,7 +356,7 @@ $VCF_OUT
 
 
 ###########################################################################################################################################
-##########################################POST PROCESSING########################################################################
+########################################## Various POST PROCESSING ########################################################################
 
 ##########################################
 ####visualise MAF
@@ -528,7 +379,7 @@ plink --vcf input.vcf.gz --make-bed --out prefix_of_plink_bfiles
 #with plink
 plink --bfile input.vcf --r2 --ld-window-kb 1000 --ld-window 99999 --ld-window-r2 0.2 --out myld_output_prefix
 
-#visualise LD using PopLDdecay. This takes a while but kinda nice
+#visualise LD using PopLDdecay. This takes a while but very nice
 PopLDdecay-3.42/bin/PopLDdecay -InVCF input.vcf.gz -OutStat output_prefix
 perl PopLDdecay-3.42/bin/Plot_OnePop.pl -inFile output_prefix.stat.gz -output output_prefix_FIGURE
 
@@ -553,98 +404,37 @@ plink --vcf input.vcf.gz --extract output_ldprune_prefix.prune.in --make-bed --p
 
     #proceed with these bed, bim, fam files for gwas later
 
-########plot PCA in R
-library(tidyverse)
-pca = read.table("/media/alle/DATA1/20230420_summarystats_using_allsnps_imputed_from_merged1001genome_26_FrCol/myPCA_mytest_merge_336_61_subset362_CHR1to5.eigenvec", header = F)
-eigenval = scan("/media/alle/DATA1/20230420_summarystats_using_allsnps_imputed_from_merged1001genome_26_FrCol/myPCA_mytest_merge_336_61_subset362_CHR1to5.eigenval")
-
-head(pca)
-sdorm$ID = as.numeric(sdorm$ID)
-sdorm = sdorm %>% arrange(sdorm$ID)
-
-#remove nuissance column as sample name is put here twice
-pca = pca[,-1]
-#set names
-names(pca)[1] = "ind"
-names(pca)[2:ncol(pca)] = paste0("PC", 1:(ncol(pca) -1))
-head(pca)
-
-#assign new pops
-sdorm = sdorm %>% mutate(assigned_origin = case_when((Latitude<45 & Longitude <10) ~ "Spain",
-                                                     (Latitude>=45 & Latitude <= 55 & Longitude <10) ~ "Central and Western Europe",
-                                                     (Latitude >55) ~ "Northern Europe",
-                                                     (Longitude >=10) ~ "Eastern Europe"
-))
-
-pca = subset(pca, pca$ind %in% sdorm$ID)
-sdorm = subset(sdorm, sdorm$ID %in% pca$ind)
-rownames(sdorm) = NULL
-sdorm$Admixture_as_database[337:356] = "france"
-
-pca = as_tibble(data.frame(pca, sdorm$Admixture_as_database))
-pca = as_tibble(data.frame(pca, sdorm$assigned_origin))
-
-names(pca)
-names(pca)[22] = "Admix"
-
-#convert to var explained
-pve = data.frame(PC = 1:20, pve = eigenval/sum(eigenval)*100)
-head(pve)
-
-#plot var explained %
-a = ggplot(pve, aes(PC, pve)) + geom_bar(stat = "identity") +
-  ylab("Percentage variance explained") + theme_light() 
-  #geom_path(aes(x = index.cont),size = 1,colour = "Gray50") +
- # geom_point(size = 1) +
-  #scale_fill_brewer(breaks = c(1:8),
-    #                palette = "YlGnBu",
-      #              direction = -1) 
-#plot pca
-par(mfrow=c(1,2))
-b = ggplot(pca, aes(PC1, PC2, col = Pop)) + geom_point() +
-  scale_color_brewer(palette = "Dark2") + coord_equal() + theme_light()
-b + xlab(paste0("PC1 (", signif(pve$pve[1] ,3), "%)")) +
-           ylab(paste0("PC2 (", signif(pve$pve[2] ,3), "%)")) 
+######## plot PCA in R ########
+########  see draw_PCA_for_plink_output.R script #####
 
 
-##########################################
-#before gwas
-#extract samples you want to work with
-bcftools input.vcf.gz -S
-#extract chr 1 to 5 only
+################ perform GWAS with gemma ################
+##########################################################
+### Before gwas, extract samples you want to work with
+bcftools input.vcf.gz -S samplelist.csv -Oz -o output.vcf.gz
+## extract chr 1 to 5 only
 plink --bfile input_prefix --chr 1-5 --allow-extra-chr --make-bed --out filtered_plink_prefix
-#make plink files
+## make plink files
 plink --vcf input --make-bed --out filtered_plink_prefix
 
 #to get map and ped files (if needed)
 plink --bfile prefix_output --recode --tab --out prefix_output
 
-###GWAS
-#Run GWAS with Plink bfile --highly recommended, worked like a charm. Somehow gemma was probelmatic with vcf
+######GWAS######
+#Run GWAS with Plink bfile --highly recommended
 
-#create kinship first
+#### create kinship first
     #by plink
 plink --bfile prefix_of_plink_bfiles --cluster --matrix --out your_kinship_output_name
-    #by gemma
+    #by gemma - recommended
 gemma --bfile prefix_of_plink_bfiles -p phenotype_file.txt -gk -o your_kinship_output_name
 
-#running gwas (-n 1 is to choose phenotype 1 if data contains multiple phenotypes)
-###NOTE! that the phenotype.txt file format must be IID, FID, pheno1, pheno2, etc ("family ID" FID  can be the same as Individual ID - IID) 
-#lmm 4 is to run linear mixed model with kinship 
+####running gwas (-n 1 is to choose phenotype 1 if data contains multiple phenotypes)
+###NOTE! that the phenotype.txt file format must be pheno1, pheno2, etc 
+## Make sure the order is correct since there is no sample name info here!
 
 gemma --bfile prefix_of_plink_bfiles -p phenotype_file.txt -n 1 -k your_kinship_output_name.cXX.txt -lmm 4 -o your_gwas_output_name
 
-#bring the file to R for manhattan plot
+###bring the file to R for manhattan plot with qqman package, manhattan function
 
-
-
-
-#import numpy as np
-import matplotlib.pyplot as plt
-
-# Load the kinship matrix from the .cXX.txt file
-kinship_matrix = np.loadtxt('kinship.cXX.txt')
-
-# Plot the kinship matrix
-plt.imshow(kinship_matrix, cmap='hot', interpolation='nearest')
-
+############################## Good Luck!! ####################################
