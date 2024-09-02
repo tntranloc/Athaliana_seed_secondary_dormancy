@@ -29,6 +29,20 @@ summary(biodata_extract) #you should have bio1 - bio19 columns now
 samples_bio = cbind(samples, biodata_extract)
 #work with samples_bio now
 
+### Similar for past and future climate
+  ## Future data at
+biofut245 = cmip6_world(model = "CanESM5", ssp = "245", 
+                        time = "2041-2060" , var = "bioc", res = 10, 
+                        path = "/where/you/want/to/download/the/data/to/")
+  # different scenarios (ssp) available 370, 585
+
+  ## Last Glacial Maximum available at
+biopas_files = list.files(path= "/where/you/want/to/download/the/data/to/chelsa_LGM_v1_2B_r10m/10min",  pattern = ".tif$", full.names = TRUE)
+  # also at another database
+  # I recommend Chelsa because the coordinates (crs) match the current and future data
+biopas_files = list.files(path= "/where/you/want/to/download/the/data/to/cclgmbi_10m",  pattern = ".tif$", full.names = TRUE)
+
+
 ######################## done ###################################
 
 
