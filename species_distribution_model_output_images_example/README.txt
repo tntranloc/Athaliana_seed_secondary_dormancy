@@ -1,0 +1,1 @@
+Output example for species_distribution_model_with_biomod2.R script
