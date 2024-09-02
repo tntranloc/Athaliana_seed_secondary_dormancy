@@ -1,0 +1,1 @@
+Images illustrated in multicollinearity_check_and_visualisation.md script
